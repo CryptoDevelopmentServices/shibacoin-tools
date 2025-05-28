@@ -642,7 +642,7 @@
 			}
 
 			function formatCurrency(value, currency = "USD") {
-				const fractionDigits = currency === "BTC" ? 8 : 6;
+				const fractionDigits = currency === "BTC" ? 8 : 8;
 				return new Intl.NumberFormat('en-US', {
 					style: 'currency',
 					currency,
