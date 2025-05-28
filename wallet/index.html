@@ -4,7 +4,7 @@
 		<meta charset="utf-8">
 		<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css">
 		<link rel="stylesheet" href="https://explorer.adventurecoin.quest/css/entypo.css">
 
@@ -25,87 +25,124 @@
 		</script>
 
 		<style>
-			html {
-				height: 100%;
+		html, body {
+			height: 100%;
+			margin: 0;
+			padding: 0;
+			background: transparent;
+			overflow-x: hidden;
+			-webkit-overflow-scrolling: touch;
+		}
+
+		body {
+			font-family: 'Source Sans Pro', sans-serif;
+			padding-top: 75px;
+			padding-bottom: 56px;
+			position: relative;
+			font-size: 16px;
+			line-height: 1.5;
+		}
+
+		#logo {
+			max-width: 30px;
+			max-height: 30px;
+			margin-top: -5px;
+			margin-right: 5px;
+		}
+
+		.b-width {
+			min-width: 100px;
+		}
+
+		.navbar-dark .navbar-nav .nav-link.active {
+			color: rgba(255,255,255,.75);
+		}
+
+		.router-page {
+			display: none;
+		}
+
+		.c-pointer {
+			cursor: pointer;
+		}
+
+		.disabled {
+			pointer-events: none;
+			opacity: 0.6;
+		}
+
+		.break-lines {
+			word-break: break-word;
+			-webkit-hyphens: auto;
+			-moz-hyphens: auto;
+				-ms-hyphens: auto;
+					hyphens: auto;
+		}
+
+		.qr-code canvas {
+			max-width: 100%;
+			height: auto;
+		}
+
+		.wallet-balance {
+			font-size: 1.5vw; /* Scales with screen width */
+			text-align: center;
+		}
+
+		.wallet-balance .text-monospace {
+			font-size: 1.5vw;
+		}
+
+		[class*="entypo"]:before {
+			font-family: 'EntypoRegular', sans-serif;
+			font-size: 14px;
+		}
+
+		.balance-small {
+			font-size: 14px;
+		}
+
+		.send-balance-fix {
+			padding: 0 0 8px 0;
+			display: inline-block;
+		}
+
+		.break-word {
+			word-wrap: break-word;
+		}
+
+		/* Responsive Navbar Container Fix */
+		@media (max-width: 991.98px) {
+			.navbar-expand-lg > .container,
+			.navbar-expand-lg > .container-fluid {
+			padding-right: 15px;
+			padding-left: 15px;
 			}
-			html, body {
-				min-height: 100%;
-				margin: 0;
-				padding: 0;
-				height: 100%;
-				background: transparent;
-				overflow: hidden;
-			}
+		}
+
+		/* Extra Mobile Optimization for small screens */
+		@media (max-width: 600px) {
 			body {
-				font-family: 'Source Sans Pro', sans-serif;
-				padding-top: 75px;
-				padding-bottom: 56px;
-				position: relative;
+			font-size: 14px;
+			padding-top: 60px;
+			padding-bottom: 48px;
 			}
-			#logo {
-				max-width: 30px;
-				max-height: 30px;
-				margin-top: -5px;
-				margin-right: 5px;
-			}
-			.b-width {
-				min-width: 100px;
-			}
-			.navbar-dark .navbar-nav .nav-link.active {
-				color: rgba(255,255,255,.75);
-			}
-			.router-page {
-				display: none;
-			}
-			.c-pointer {
-				cursor: pointer;
-			}
-			.disabled {
-				pointer-events: none;
-			}
-			.break-lines {
-			  /* https://stackoverflow.com/a/18706058/9217774 <3 */
-			  -ms-word-break: break-all;
-				word-break: break-all;
 
-			  /* Non standard for webkit */
-				word-break: break-word;
-
-				-webkit-hyphens: auto;
-				   -moz-hyphens: auto;
-					-ms-hyphens: auto;
-						hyphens: auto;
-			}
-			.qr-code canvas{
-				max-width: 100%;
-			}
 			.wallet-balance {
-				font-size: 23px;
+			font-size: 18px;
 			}
+
 			.wallet-balance .text-monospace {
-				font-size: 20px;
+			font-size: 16px;
 			}
-			[class*="entypo"]:before {
-				font-family: 'EntypoRegular', sans-serif;
-				font-size: 16px;
+
+			#logo {
+			max-width: 24px;
+			max-height: 24px;
 			}
-			@media (max-width: 991.98px) {
-				.navbar-expand-lg>.container, .navbar-expand-lg>.container-fluid {
-					padding-right: 15px;
-					padding-left: 15px;
-				}
-			}
-			.balance-small {
-				font-size: 15px;
-			}
-			.send-balance-fix {
-				padding: 0px 0px 8px 0px;
-				display: inline-block;
-			}
-			.break-word {
-				word-wrap: break-word;
-			}
+		}
 		</style>
+
 		<title>Wallet</title>
 		<meta name="description" content="ShibaCoinWeb Wallet">
 	</head>
