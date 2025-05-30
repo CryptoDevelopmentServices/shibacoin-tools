@@ -725,8 +725,8 @@
 							const row = document.createElement('tr');
 							const dateUTC = new Date(tx.timestamp * 1000).toUTCString();
 
-							const sent = parseFloat(tx.sent || 0);
-							const received = parseFloat(tx.received || 0);
+							const sent = parseFloat(tx.received || 0);
+							const received = parseFloat(tx.sent || 0);
 							const netAmount = received - sent;
 							const balance = parseFloat(tx.balance || 0);
 
