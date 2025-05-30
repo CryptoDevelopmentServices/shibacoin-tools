@@ -130,6 +130,38 @@
 		}
 		}
 
+		.transaction-history-list {
+			padding: 10px;
+			max-height: 300px;
+			overflow-y: auto;
+			border-top: 1px solid #ddd;
+		}
+
+		.transaction-item {
+			border-bottom: 1px solid #eee;
+			padding: 8px 0;
+			font-size: 14px;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		.transaction-item.sent {
+			color: #d9534f;
+		}
+
+		.transaction-item.received {
+			color: #5cb85c;
+		}
+
+		.transaction-item .tx-direction {
+			font-weight: bold;
+		}
+
+		.transaction-item .tx-amount {
+			font-family: monospace;
+		}
+
 		/* Mobile Optimization */
 		@media (max-width: 600px) {
 		body {
@@ -263,7 +295,10 @@
 									<a class="nav-link tab-link" data-tab-name="wallet-send" data-tab-family="wallet-block" href="#" tkey="send"></a>
 								</li>
 								<li class="nav-item mr-2">
-									<a id="history-link" class="nav-link" target="_blank" href="https://shibaexplorer.com/address/" tkey="history"></a>
+									<a id="history-link" class="nav-link" target="_blank" href="https://shibaexplorer.com/address/" tkey="address"></a>
+								</li>
+								<li class="nav-item mr-2">
+									<a class="nav-link tab-link" data-tab-name="wallet-history" data-tab-family="wallet-block" href="#" tkey="history"></a>
 								</li>
 								<li class="nav-item">
 									<a class="nav-link tab-link" data-tab-name="wallet-keys" data-tab-family="wallet-block" href="#" tkey="keys"></a>
@@ -377,6 +412,24 @@
 									</div> -->
 								</div>
 							</div>
+							<div class="tab-item d-none" data-tab="wallet-history">
+							<h5>Transaction History</h5>
+							<div id="tx-history" class="table-responsive">
+								<table class="table table-striped">
+									 <tr>
+										<th>Tx Hash</th>
+										<th>Amount (SHIC)</th>
+										<th>Balance (SHIC)</th>
+										<th>Timestamp</th>
+									 </tr>
+									<tbody id="tx-history-body">
+										<!-- Rows injected by JS -->
+									</tbody>
+								</table>
+							</div>
+						</div>
+
+						</div>
 						</div>
 						<div class="card-footer">
 							<button id="footer-close" type="button" class="btn btn-danger btn-block footer-item" tkey="close"></button>
@@ -649,6 +702,59 @@
 					console.error("LiveCoinWatch failed:", err);
 					return null;
 				}
+			}
+
+			function fetchWalletTxHistory() {
+				if (!globalData.address) return;
+
+				const corsProxy = 'https://corsproxy.io/?';
+				const apiUrl = `https://shibaexplorer.com/ext/getaddresstxs/${globalData.address}/0/50`;
+
+				fetch(`${corsProxy}${encodeURIComponent(apiUrl)}`)
+					.then(response => response.json())
+					.then(data => {
+						const txBody = document.getElementById('tx-history-body');
+						txBody.innerHTML = '';
+
+						if (!data || !Array.isArray(data)) {
+							showMessage('No transaction data found.');
+							return;
+						}
+
+						data.forEach(tx => {
+							const row = document.createElement('tr');
+							const dateUTC = new Date(tx.timestamp * 1000).toUTCString();
+
+							const sent = parseFloat(tx.sent || 0);
+							const received = parseFloat(tx.received || 0);
+							const netAmount = received - sent;
+							const balance = parseFloat(tx.balance || 0);
+
+							const amountFormatted = `${netAmount > 0 ? '+' : netAmount < 0 ? '' : ''}${netAmount.toLocaleString(undefined, {
+								minimumFractionDigits: 2,
+								maximumFractionDigits: 8
+							})}`;
+							const balanceFormatted = balance.toLocaleString(undefined, {
+								minimumFractionDigits: 2,
+								maximumFractionDigits: 8
+							});
+
+							const amountColor = netAmount > 0 ? 'green' : netAmount < 0 ? 'red' : 'gray';
+
+							row.innerHTML = `
+								<td><a href="https://shibaexplorer.com/tx/${tx.txid}" target="_blank">${tx.txid}</a></td>
+								<td style="color:${amountColor}">${amountFormatted}</td>
+								<td>${balanceFormatted}</td>
+								<td>${dateUTC}</td>
+							`;
+
+							txBody.appendChild(row);
+						});
+					})
+					.catch(error => {
+						console.error('Error fetching transaction history:', error);
+						showMessage('Failed to load transaction history.');
+					});
 			}
 
 			function formatCurrency(value, currency = "USD") {
@@ -1068,6 +1174,8 @@
 			}
 
 
+
+
 			// Set title
 			function setHomeTitle() {
 				if (globalData.keys != undefined) {
@@ -1412,6 +1520,8 @@
 				}
 			}
 
+			
+
 			// Create new wallet
 			$('#footer-create').click(function() {
 				var keys = bitcoin.ECPair.makeRandom({'network': getConfig()['network']})
@@ -1612,6 +1722,7 @@
 						$(this).text(getText('show'))
 					}
 				})
+				
 
 				// Add transaction output
 				$('#add-output').click(function(e){
@@ -1694,6 +1805,10 @@
 				if (currencySelect) {
 					currencySelect.addEventListener('change', updatePriceAndValue);
 				}
+			});
+
+			document.querySelector('[data-tab="wallet-history"]').addEventListener('click', () => {
+				fetchWalletTxHistory();
 			});
 		</script>
 	</body>
