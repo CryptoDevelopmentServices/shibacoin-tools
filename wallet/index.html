@@ -386,6 +386,7 @@
 										<input name="send-address" class="form-control" type="text" value="" tkey="enter-address">
 										<input name="send-ammount" class="form-control" type="text" value="" tkey="amount">
 										<div class="input-group-append">
+											<button id="send-max" class="btn btn-outline-dark" type="button" style="border-top-left-radius: 0; border-bottom-left-radius: 0; width: 60px;">Max</button>
 											<button id="add-output" class="btn btn-outline-dark">
 												<span class="entypo plus"></span>
 											</button>
@@ -630,7 +631,7 @@
 					'api': 'https://electrum.shibaexplorer.com',
 					'ticker': 'SHIC',
 					'decimals': 8,
-					'fee': 0.0001,
+					'fee': 1,
 					'network': {
 						'messagePrefix': '\x19ShibaCoin Signed Message:\n',
 						'bip32': {
@@ -1340,118 +1341,109 @@
 			}
 
 			function sendTransaction() {
-				var network = getConfig()['network']
-				var keys = globalData.keys
+				var network = getConfig()['network'];
+				var keys = globalData.keys;
 
-				var decimals = getConfig()['decimals']
-				var outputs = globalData.tx.outputs
-				var amount = globalData.tx.amount
-				var address = globalData.address
+				var decimals = getConfig()['decimals'];
+				var outputs = globalData.tx.outputs;
+				var amount = globalData.tx.amount;
+				var address = globalData.address;
+				var isMaxSend = globalData.tx.isMaxSend || false;
 
-				var hashType = bitcoin.Transaction.SIGHASH_ALL
-				var scripts = []
+				var hashType = bitcoin.Transaction.SIGHASH_ALL;
+				var scripts = [];
 
-				var txb = new bitcoin.TransactionBuilder(network)
-				txb.setVersion(2)
+				var txb = new bitcoin.TransactionBuilder(network);
+				txb.setVersion(2);
 
-				$('#send-cancel').addClass('disabled')
-				$('#send-confirm').addClass('disabled')
-				$('#confirm-screen').addClass('d-none')
-				$('#status-screen').removeClass('d-none')
-				$('#send-title').text(messages.title['processing'])
-				$('#status-screen .extra-info').empty()
-				$('#status-screen span').html(messages.tx['generating'])
+				$('#send-cancel').addClass('disabled');
+				$('#send-confirm').addClass('disabled');
+				$('#confirm-screen').addClass('d-none');
+				$('#status-screen').removeClass('d-none');
+				$('#send-title').text(messages.title['processing']);
+				$('#status-screen .extra-info').empty();
+				$('#status-screen span').html(messages.tx['generating']);
 
 				for (var i = 0, size = outputs.length; i < size; i++) {
-					txb.addOutput(outputs[i].address, outputs[i].amount)
+					txb.addOutput(outputs[i].address, outputs[i].amount);
 				}
 
-				$('#status-screen span').html(messages.tx['loading-utxo'])
-				getUnspent(address, amount).then(function(data) {
-					var value = 0
+				$('#status-screen span').html(messages.tx['loading-utxo']);
+				getUnspent(address, amount).then(function (data) {
+					var value = 0;
 					for (var i = 0, size = data.result.length; i < size; i++) {
-						var txid = data.result[i].txid
-						var index = data.result[i].index
-						value += data.result[i].value
+						var txid = data.result[i].txid;
+						var index = data.result[i].index;
+						value += data.result[i].value;
 
-						var script = bitcoin.Buffer(data.result[i].script, 'hex')
-						var type = getScriptType(script)
+						var script = bitcoin.Buffer(data.result[i].script, 'hex');
+						var type = getScriptType(script);
 
 						if (type == 'bech32') {
-							var p2wpkh = getP2WPKHScript(keys.publicKey)
-							txb.addInput(txid, index, null, p2wpkh.output)
+							var p2wpkh = getP2WPKHScript(keys.publicKey);
+							txb.addInput(txid, index, null, p2wpkh.output);
 						} else {
-							txb.addInput(txid, index)
+							txb.addInput(txid, index);
 						}
 
 						scripts.push({
 							'script': script,
 							'type': type,
 							'value': data.result[i].value
-						})
+						});
 					}
 
-					if (value >= amount) {
-						var change = value - amount
-						if (change > 0) {
-							txb.addOutput(address, change)
+					var fee = parseInt($('#send-fee').val()) * 1e8;
+
+					if (value >= amount + fee || isMaxSend && value >= amount) {
+						// Only add change output if NOT max send and there's leftover
+						if (!isMaxSend) {
+							var change = value - amount - fee;
+							if (change > 0) {
+								txb.addOutput(address, change);
+							}
 						}
 
 						for (var i = 0, size = scripts.length; i < size; i++) {
 							switch (scripts[i].type) {
-								case 'bech32':
-									var value = scripts[i].value
-									txb.sign(i, keys, null, null, value, null)
-									break
-
-								case 'segwit':
-									var value = scripts[i].value
-									var redeem = getP2WPKHScript(keys.publicKey)
-									var p2sh = getP2SHScript(redeem)
-
-									txb.sign(i, keys, p2sh.redeem.output, null, value, null)
-									break
-
 								case 'legacy':
-									txb.sign(i, keys)
-									break
-
+									txb.sign(i, keys);
+									break;
 								default:
-									showMessage(messages.error['bad-utxo'])
-									break
+									showMessage(messages.error['bad-utxo']);
+									break;
 							}
 						}
 
-						var tx = txb.build()
-						transactionBroadcast(tx.toHex()).then(function(data) {
+						var tx = txb.build();
+						transactionBroadcast(tx.toHex()).then(function (data) {
 							if (data.error == undefined) {
 								$('#status-screen span').html(`
 									<a href="${blockExplorer.tx(data.result)}" target="_blank">
 										${data.result}
 									</a> 
-								`)
-								$('#send-title').text(messages.title['success'])
+								`);
+								$('#send-title').text(messages.title['success']);
 							} else {
-								$('#status-screen span').html(messages.error['broadcast-failed'])
-								$('#send-title').text(messages.title['failed'])
+								$('#status-screen span').html(messages.error['broadcast-failed']);
+								$('#send-title').text(messages.title['failed']);
 								$('#status-screen .extra-info').html(`
 									<div class="mt-3">
 										<textarea class="form-control" readonly cols="30" rows="10">${data.error.message}</textarea>
 									</div>
-								`)
+								`);
 							}
-							resetTxForm()
-						})
+							resetTxForm();
+						});
 
-						$('#send-cancel').addClass('d-none')
-						$('#send-confirm').addClass('d-none')
-						$('#send-close-footer').removeClass('d-none')
-						$('#send-close-footer').removeClass('disabled')
-
+						$('#send-cancel').addClass('d-none');
+						$('#send-confirm').addClass('d-none');
+						$('#send-close-footer').removeClass('d-none');
+						$('#send-close-footer').removeClass('disabled');
 					} else {
-						showMessage(messages.error['not-enough-funds'])
+						showMessage(messages.error['not-enough-funds']);
 					}
-				})
+				});
 			}
 
 			// Close wallet
@@ -1610,50 +1602,6 @@
 					$(window).trigger('hashchange')
 				}
 
-				$('#send-tx').click(function() {
-					var error = false
-					var txFee = ($('#send-fee').val() != '') ? $('#send-fee').val() : globalData.rfee
-					var total = 0
-
-					if ((isNaN(txFee)) || txFee <= 0) {
-						showMessage(messages.error['not-valid-fee'])
-						error = true
-					} else {
-						if (txFee < getConfig()['fee']) {
-							showMessage(messages.error['small-fee'])
-							error = true
-						}
-					}
-
-					$.each($('#send-outputs .send-outputs-item'), function(key, item) {
-						var address = $('[name="send-address"]', item).val().trim()
-						var amount = $('[name="send-ammount"]', item).val()
-
-						if ((isNaN(amount)) || amount <= 0) {
-							showMessage(messages.error['not-valid-amount'])
-							error = true
-						}
-
-						if (validateAddress(address) == false) {
-							showMessage(messages.error['not-valid-address'])
-							error = true
-						}
-
-						total += amount * 1
-					})
-
-					total += txFee * 1
-					total = parseFloat(total.toFixed(getConfig()['decimals']))
-
-					if (!error) {
-						if (total <= amountFormat(globalData.balance)) {
-							showConfirmation(total)
-						} else {
-							showMessage(messages.error['not-enough-funds'])
-						}
-					}
-				})
-
 				// Open wallet by WIF key
 				$('#open-key-form').submit(function(e){
 					var wif = $('#passphrase').val().trim()
@@ -1724,12 +1672,6 @@
 					e.preventDefault()
 				})
 
-				// Confirm transaction sendign (are you sure?)
-				$('#send-confirm').click(function(e){
-					sendTransaction()
-					e.preventDefault()
-				})
-
 				// Toggle private key visibility
 				$('.toggle-priv-key').click(function(){
 					if ($(this).text() == getText('show')) {
@@ -1741,6 +1683,55 @@
 					}
 				})
 				
+				$('#send-tx').click(function() {
+					var error = false
+					var txFee = ($('#send-fee').val() != '') ? $('#send-fee').val() : globalData.rfee
+					var total = 0
+
+					if ((isNaN(txFee)) || txFee <= 0) {
+						showMessage(messages.error['not-valid-fee'])
+						error = true
+					} else {
+						if (txFee < getConfig()['fee']) {
+							showMessage(messages.error['small-fee'])
+							error = true
+						}
+					}
+
+					$.each($('#send-outputs .send-outputs-item'), function(key, item) {
+						var address = $('[name="send-address"]', item).val().trim()
+						var amount = $('[name="send-ammount"]', item).val()
+
+						if ((isNaN(amount)) || amount <= 0) {
+							showMessage(messages.error['not-valid-amount'])
+							error = true
+						}
+
+						if (validateAddress(address) == false) {
+							showMessage(messages.error['not-valid-address'])
+							error = true
+						}
+
+						total += amount * 1
+					})
+
+					total += txFee * 1  // ← that's OK
+					total = parseFloat(total.toFixed(getConfig()['decimals']))
+
+					if (!error) {
+						if (total <= amountFormat(globalData.balance)) {
+							showConfirmation(total)
+						} else {
+							showMessage(messages.error['not-enough-funds'])
+						}
+					}
+				})
+
+				// Confirm transaction sendign (are you sure?)
+				$('#send-confirm').click(function(e){
+					sendTransaction()
+					e.preventDefault()
+				})
 
 				// Add transaction output
 				$('#add-output').click(function(e){
@@ -1760,6 +1751,47 @@
 						e.preventDefault()
 					})
 					e.preventDefault()
+				})
+
+				// 1. Define function first
+				function getMaxSendAmount(utxos, feePerByte) {
+					const inputCount = utxos.length;
+					const outputCount = 2; // recipient + change output
+					const txSize = inputCount * 180 + outputCount * 34 + 10;
+					const fee = txSize * feePerByte;
+					const total = utxos.reduce((sum, u) => sum + u.value, 0);
+					const maxSend = total - fee;
+					return maxSend > 0 ? maxSend : 0;
+				}
+
+				// 2. Bind max button click AFTER function is defined
+				$('#send-max').click(function () {
+					getUnspent(globalData.address, 0).then(function (data) {
+						if (!data.error) {
+							const utxos = data.result;
+							const feePerByte = 10000;
+							const maxAmount = getMaxSendAmount(utxos, feePerByte);
+
+							const roundedAmount = (maxAmount / 1e8).toFixed(getConfig()['decimals']);
+							$('[name="send-ammount"]').val(roundedAmount);
+
+							globalData.tx.isMaxSend = true;
+							globalData.tx.amount = maxAmount;
+							globalData.tx.outputs = [{
+								address: globalData.address, // OR update this to recipient field
+								amount: maxAmount
+							}];
+						}
+					});
+				});
+
+				// Set wallet recomended fee
+				estimateFee().then(function(data) {
+					if (data.error == undefined) {
+						globalData.rfee = amountFormat(data.result.feerate)
+					} else {
+						globalData.rfee = getConfig()['fee']
+					}
 				})
 
 				// Reset send form
@@ -1799,14 +1831,7 @@
 					initWallet()
 				})
 
-				// Set wallet recomended fee
-				estimateFee().then(function(data) {
-					if (data.error == undefined) {
-						globalData.rfee = amountFormat(data.result.feerate)
-					} else {
-						globalData.rfee = getConfig()['fee']
-					}
-				})
+				
 
 				$('#scan-modal').on('hide.bs.modal', function (e) {
 					stopStream()
